@@ -1,0 +1,48 @@
+[project]
+name = "plesk-adr"
+version = "0.1.0"
+description = "Plesk Auto-Detection & Response — an uptime-alert-driven ecosystem that correlates scattered Plesk logs, diagnoses outages, and responds with tiered remediation."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# The Claude "brain" is only needed for the AI fallback. Install with: pip install -e ".[ai]"
+ai = [
+    "anthropic>=0.40",
+]
+# The on-box MCP server.
+mcp = [
+    "mcp>=1.2",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+adr-orchestrator = "orchestrator.app:main"
+adr-mcp-server = "mcp_server.server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["orchestrator", "mcp_server"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

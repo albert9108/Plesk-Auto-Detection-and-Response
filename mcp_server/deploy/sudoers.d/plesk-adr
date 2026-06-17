@@ -1,0 +1,25 @@
+# =============================================================================
+# OS-level hard backstop for Plesk-ADR — install as /etc/sudoers.d/plesk-adr
+#   sudo install -m 0440 -o root -g root mcp_server/deploy/sudoers.d/plesk-adr \
+#        /etc/sudoers.d/plesk-adr
+#   sudo visudo -cf /etc/sudoers.d/plesk-adr   # validate before trusting it
+#
+# This list MUST stay in sync with mcp_server/allowlist.yaml. It is the
+# independent guarantee that even a bug in the Python layer cannot escalate:
+# the service user can run ONLY these exact commands with sudo, nothing else.
+#
+# Replace `plesk-adr` below with the dedicated service user you create:
+#   sudo useradd --system --shell /usr/sbin/nologin plesk-adr
+# =============================================================================
+
+# Read-only diagnostics
+plesk-adr ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
+plesk-adr ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status *
+plesk-adr ALL=(root) NOPASSWD: /usr/sbin/plesk bin domain --info *
+
+# Governed actions (auto/approval tiers enforced in the orchestrator)
+plesk-adr ALL=(root) NOPASSWD: /usr/bin/fail2ban-client set * unbanip *
+plesk-adr ALL=(root) NOPASSWD: /usr/bin/fail2ban-client set * banip *
+plesk-adr ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
+plesk-adr ALL=(root) NOPASSWD: /usr/bin/systemctl restart apache2
+plesk-adr ALL=(root) NOPASSWD: /usr/bin/systemctl restart plesk-php*-fpm

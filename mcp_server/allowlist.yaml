@@ -1,0 +1,93 @@
+# =============================================================================
+# Plesk-ADR MCP server allowlist — the single source of truth for what the
+# on-box execution layer is permitted to do. This file is mirrored by the
+# OS-level deploy/sudoers.d/plesk-adr rules, which are the independent hard
+# backstop: even a logic bug here cannot run a command sudoers does not allow.
+#
+# Parameters are substituted into argv as separate list items (never via a
+# shell), and every value is validated against `param_patterns` first, so
+# command injection is not possible.
+# =============================================================================
+
+# Strict validation patterns for every parameter that can be substituted.
+param_patterns:
+  ip: '^[0-9a-fA-F:.]{3,45}$'
+  jail: '^[a-zA-Z0-9_.-]{1,64}$'
+  unit: '^[a-zA-Z0-9_.@-]{1,128}$'
+  domain: '^[a-zA-Z0-9._-]{1,253}$'
+  lines: '^[0-9]{1,5}$'
+  pattern: '^[\w .:@/_-]{1,200}$'
+
+# Logical commands the server may execute. Each maps to an argv template.
+# `sudo: true` requires a matching rule in deploy/sudoers.d/plesk-adr.
+# `tier` is advisory metadata surfaced to the policy engine.
+commands:
+  # ---- read-only: system health ----
+  disk_usage:
+    argv: ["df", "-hP"]
+    sudo: false
+    tier: read
+  memory_usage:
+    argv: ["free", "-m"]
+    sudo: false
+    tier: read
+  load_average:
+    argv: ["uptime"]
+    sudo: false
+    tier: read
+  top_processes:
+    argv: ["ps", "-eo", "pid,pcpu,pmem,comm", "--sort=-pcpu"]
+    sudo: false
+    tier: read
+
+  # ---- read-only: services ----
+  service_status:
+    argv: ["systemctl", "is-active", "{unit}"]
+    sudo: false
+    tier: read
+  service_show:
+    argv: ["systemctl", "show", "{unit}", "--no-page"]
+    sudo: false
+    tier: read
+
+  # ---- read-only: fail2ban ----
+  fail2ban_status:
+    argv: ["fail2ban-client", "status"]
+    sudo: true
+    tier: read
+  fail2ban_jail_status:
+    argv: ["fail2ban-client", "status", "{jail}"]
+    sudo: true
+    tier: read
+
+  # ---- read-only: plesk ----
+  plesk_domain_info:
+    argv: ["plesk", "bin", "domain", "--info", "{domain}"]
+    sudo: true
+    tier: read
+
+  # ---- actions (mapped to tiers by orchestrator/response/policy.yaml) ----
+  fail2ban_unban:
+    argv: ["fail2ban-client", "set", "{jail}", "unbanip", "{ip}"]
+    sudo: true
+    tier: auto
+  fail2ban_ban:
+    argv: ["fail2ban-client", "set", "{jail}", "banip", "{ip}"]
+    sudo: true
+    tier: auto
+  service_restart:
+    argv: ["systemctl", "restart", "{unit}"]
+    sudo: true
+    tier: auto
+
+# Allowlisted log path prefixes. Any read outside these is refused.
+log_paths:
+  - /var/log/fail2ban.log
+  - /var/log/auth.log
+  - /var/log/syslog
+  - /var/log/messages
+  - /var/log/maillog
+  - /var/log/nginx/
+  - /var/log/apache2/
+  - /var/log/plesk/
+  - /var/www/vhosts/system/
