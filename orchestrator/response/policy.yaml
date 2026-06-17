@@ -1,0 +1,32 @@
+# =============================================================================
+# Remediation governance: maps each logical action to a tier.
+#   auto       -> executed immediately, team is notified afterwards
+#   approval   -> posted to chat with approve/deny; executed only on approval
+#   forbidden  -> hard-blocked, never executed (team notified)
+#
+# Fail-safe: any action NOT listed here falls to `default_tier`.
+# Tune these to your environment — this is the single knob for autonomy.
+# =============================================================================
+
+default_tier: approval
+
+actions:
+  # safe, reversible, high-confidence -> automatic
+  unban_ip: auto
+  restart_service: auto
+  ban_ip: auto
+  alert_only: auto          # pseudo-action: notify only, nothing is executed
+
+  # impactful / business decisions -> require a human click
+  disable_domain: approval
+  enable_domain: approval
+  flush_jail: approval
+
+# Never executed, regardless of who asks (including the AI).
+forbidden:
+  - delete_data
+  - change_dns
+  - modify_allowlist
+  - modify_sudoers
+  - billing_change
+  - user_account_change

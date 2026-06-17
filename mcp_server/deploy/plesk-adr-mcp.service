@@ -1,0 +1,27 @@
+# systemd unit for the on-box Plesk-ADR MCP server.
+# Install: sudo cp this to /etc/systemd/system/plesk-adr-mcp.service
+#          sudo systemctl daemon-reload && sudo systemctl enable --now plesk-adr-mcp
+[Unit]
+Description=Plesk-ADR MCP server (on-box execution layer)
+After=network.target
+
+[Service]
+Type=simple
+User=plesk-adr
+Group=plesk-adr
+WorkingDirectory=/opt/plesk-adr
+Environment=ADR_USE_SUDO=1
+# stdio for co-located; set ADR_MCP_TRANSPORT=streamable-http to split off-box.
+Environment=ADR_MCP_TRANSPORT=stdio
+ExecStart=/opt/plesk-adr/.venv/bin/adr-mcp-server
+Restart=on-failure
+RestartSec=3
+# Hardening: the only privilege escalation is via the narrow sudoers.d allowlist.
+NoNewPrivileges=false
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/
+
+[Install]
+WantedBy=multi-user.target
