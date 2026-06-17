@@ -18,6 +18,10 @@ When **UptimeRobot** reports a domain down, ADR:
 > The Anthropic API key is **optional** — the playbook handles the common cases with
 > no AI. Add a key only for smart fallback on unusual outages.
 
+> 📖 **Setting it up?** Follow the step-by-step
+> **[Detailed Install & Usage Guide](docs/INSTALL.md)** — it lists every value you
+> must fill in (secrets, prober IPs, chat credentials, sudoers paths).
+
 ## Architecture
 
 ```
