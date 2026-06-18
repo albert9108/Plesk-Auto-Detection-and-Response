@@ -39,8 +39,10 @@ class ServerTools:
 
     def fail2ban_status(self, jail: str | None = None) -> str:
         if jail:
-            return self.runner.run("fail2ban_jail_status", jail=jail).stdout
-        return self.runner.run("fail2ban_status").stdout
+            res = self.runner.run("fail2ban_jail_status", jail=jail)
+            return res.stdout or res.stderr
+        res = self.runner.run("fail2ban_status")
+        return res.stdout or res.stderr
 
     def find_ip_in_jails(self, ip: str, jails: list[str] | None = None) -> list[str]:
         """Return the jails that currently have `ip` banned."""

@@ -27,7 +27,7 @@ class CommandNotAllowed(Exception):
 
 
 class LogPathNotAllowed(Exception):
-    """Raised when a log read targets a path outside the allowlist."""
+    """Raised when a log read targets a path outside the allowlist or is unreadable."""
 
 
 @dataclass
@@ -113,8 +113,11 @@ class CommandRunner:
             raise LogPathNotAllowed(f"log path {path!r} is not in the allowlist")
         if not os.path.isfile(path):
             return ""
-        with open(path, "r", encoding="utf-8", errors="replace") as fh:
-            content = fh.readlines()
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                content = fh.readlines()
+        except PermissionError:
+            raise LogPathNotAllowed(f"permission denied reading {path!r}")
         if grep:
             content = [ln for ln in content if grep in ln]
         return "".join(content[-lines:])
