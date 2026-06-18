@@ -27,5 +27,10 @@ class Settings(BaseSettings):
     # Audit DB path.
     audit_db: str = "adr-audit.sqlite"
 
+    # Multi-server inventory. If set, the orchestrator routes each alert to the box
+    # that hosts the domain (via HTTP). If unset, it falls back to an in-process
+    # LocalToolClient ("everything on the box").
+    servers_file: str = ""
+
     def probe_ip_list(self) -> list[str]:
         return [ip.strip() for ip in self.probe_ips.split(",") if ip.strip()]

@@ -1,0 +1,22 @@
+# Multi-server inventory for the off-box orchestrator.
+# Copy to servers.yaml and set ADR_SERVERS_FILE=servers.yaml (or pass the path).
+#
+# Each server runs the on-box component in HTTP mode:
+#   ADR_MCP_TRANSPORT=http  ADR_MCP_TOKEN=<that server's secret>  adr-mcp-server
+# behind HTTPS. The orchestrator routes an alert to the server whose `domains`
+# list contains the down domain; if none match, the `default` server is used.
+
+servers:
+  - name: web1
+    url: https://box1.example.com:8765   # the on-box server's URL
+    token: REPLACE_WITH_BOX1_ADR_MCP_TOKEN
+    domains:
+      - shop.com
+      - blog.com
+    default: true                        # used when a domain matches no server
+
+  - name: web2
+    url: https://box2.example.com:8765
+    token: REPLACE_WITH_BOX2_ADR_MCP_TOKEN
+    domains:
+      - app.io

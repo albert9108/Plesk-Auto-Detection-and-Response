@@ -45,11 +45,24 @@ def test_webhook_runs_incident_and_auto_remediates(tmp_path):
     assert ("unban_ip", "203.0.113.5", "plesk-apache") in client.calls
 
 
-def test_chat_approval_callback(tmp_path):
+def test_chat_approval_callback_requires_token(tmp_path):
     s = Settings(webhook_token="secret", audit_db=str(tmp_path / "a.sqlite"))
     app = create_app(s, client=FakeClient())
     c = TestClient(app)
-    # no pending approval -> resolved False, but endpoint works
-    r = c.post("/webhook/chat", json={"incident_id": "nope", "decision": "approve"})
+    # without the token the callback is rejected (auth-hardened)
+    bad = c.post("/webhook/chat", json={"incident_id": "nope", "decision": "approve"})
+    assert bad.status_code == 401
+    # with the token: no pending approval -> resolved False, but endpoint works
+    r = c.post("/webhook/chat?token=secret", json={"incident_id": "nope", "decision": "approve"})
     assert r.status_code == 200
     assert r.json() == {"resolved": False}
+
+
+def test_chat_callback_accepts_bearer_header(tmp_path):
+    s = Settings(webhook_token="secret", audit_db=str(tmp_path / "a.sqlite"))
+    app = create_app(s, client=FakeClient())
+    c = TestClient(app)
+    r = c.post("/webhook/chat", json={"text": "status"},
+               headers={"Authorization": "Bearer secret"})
+    assert r.status_code == 200
+    assert "reply" in r.json()

@@ -172,9 +172,10 @@ You only need one, but you can enable all three and pick a favourite.
 2. Add the bot to your group (or DM it). To get the **chat id**, message **@userinfobot**,
    or call `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `chat.id`. Put it in
    `ADR_TELEGRAM_CHAT_ID`.
-3. For the approve/deny buttons to work, register the bot webhook to your orchestrator:
+3. For the approve/deny buttons to work, register the bot webhook to your orchestrator.
+   **Include your `ADR_WEBHOOK_TOKEN`** so Telegram callbacks pass auth:
    ```bash
-   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<your-host>/webhook/telegram"
+   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<your-host>/webhook/telegram?token=<ADR_WEBHOOK_TOKEN>"
    ```
 
 ### Discord
@@ -301,6 +302,84 @@ the playbook found.
 
 ---
 
+## Off-box orchestrator + multiple servers (HTTP)
+
+Run the brain on a separate machine (even your laptop, to try it) and have it manage
+several Plesk boxes. Each box exposes its tools at an authenticated **URL**; the
+orchestrator routes each alert to the box that hosts the down domain.
+
+### On each Plesk box — run the on-box server in HTTP mode
+
+```bash
+# As the service user, with a STRONG per-box secret:
+export ADR_MCP_TRANSPORT=http
+export ADR_MCP_TOKEN="$(openssl rand -hex 24)"   # save this; the orchestrator needs it
+export ADR_MCP_HTTP_PORT=8765
+/opt/plesk-adr/.venv/bin/adr-mcp-server          # serves :8765
+
+# from anywhere allowed:
+curl https://box1.example.com:8765/health        # {"status":"ok"}
+curl -H "Authorization: Bearer $ADR_MCP_TOKEN" \
+     -X POST https://box1.example.com:8765/tool/system_health -d '{}'
+```
+
+> **Security — this URL is now reachable over the network.** Protect it with:
+> 1. a **strong `ADR_MCP_TOKEN`** (the bearer token above),
+> 2. **HTTPS** (terminate TLS with nginx/Caddy in front, or a real cert), and
+> 3. a **firewall rule** restricting port `8765` to your orchestrator where possible.
+>
+> The allowlist + sudoers still apply, so even an authenticated caller can only run
+> the safe, allowlisted operations — but keep the token secret.
+
+For production, bake `ADR_MCP_TRANSPORT=http` and `ADR_MCP_TOKEN` into the systemd unit
+(`mcp_server/deploy/plesk-adr-mcp.service`) instead of exporting by hand.
+
+### On the orchestrator machine — list your servers
+
+```bash
+cp servers.yaml.example servers.yaml
+nano servers.yaml          # one block per box: name, url, token, domains, default
+# tell the orchestrator to use it:
+echo 'ADR_SERVERS_FILE=servers.yaml' >> .env
+adr-orchestrator
+```
+
+`servers.yaml`:
+```yaml
+servers:
+  - name: web1
+    url: https://box1.example.com:8765
+    token: <box1's ADR_MCP_TOKEN>
+    domains: [shop.com, blog.com]
+    default: true          # used when a domain matches no server
+  - name: web2
+    url: https://box2.example.com:8765
+    token: <box2's ADR_MCP_TOKEN>
+    domains: [app.io]
+```
+
+When `ADR_SERVERS_FILE` is set, an alert for `shop.com` is routed to `web1`; an alert
+for a domain not listed anywhere goes to the `default` server (or is reported as
+"unknown server" if there's no default). Leave `ADR_SERVERS_FILE` unset to run
+everything in-process on a single box.
+
+### Trying it on your computer first
+
+1. Run the on-box HTTP server on **one** Plesk box (steps above).
+2. On your computer: `pip install -e .`, create `servers.yaml` with that one box, set
+   `ADR_SERVERS_FILE`, run `adr-orchestrator`.
+3. Fire a test alert for one of its domains:
+   ```bash
+   curl -X POST "http://localhost:8080/webhook/uptimerobot?token=<ADR_WEBHOOK_TOKEN>" \
+     -H 'Content-Type: application/json' \
+     -d '{"monitorURL":"https://shop.com","alertType":"1"}'
+   ```
+   You should see it reach `web1` and post a Teams notification.
+
+> **Note:** for *real* UptimeRobot and Teams traffic, the orchestrator must be reachable
+> from the internet (they call it). On a laptop, use the `curl` simulation above, or
+> expose it temporarily with a tunnel (e.g. `cloudflared`/`ngrok`) while testing.
+
 ## Values you must fill in
 
 | Value | Lives in | Required? |
@@ -313,3 +392,5 @@ the playbook found.
 | Service username + binary paths + service unit names | `mcp_server/deploy/sudoers.d/plesk-adr` (mirror `mcp_server/allowlist.yaml`) | **Yes** |
 | Action → tier mapping | `orchestrator/response/policy.yaml` | Review before AUTO |
 | UptimeRobot webhook URL + JSON body | UptimeRobot dashboard | **Yes** |
+| `ADR_MCP_TOKEN` (per-box bearer secret) | each box's env / systemd unit | If off-box (HTTP) |
+| Server inventory (`url` + `token` + `domains` per box) | `servers.yaml` + `ADR_SERVERS_FILE` | If off-box / multi-server |
