@@ -299,6 +299,7 @@ the playbook found.
 | No chat messages | No notifier configured → it's logging to console. Set a channel's creds and restart. |
 | Diagnoses but never uses AI | Expected without `ANTHROPIC_API_KEY` — it posts the collected evidence instead. Add the key + `pip install -e ".[ai]"` to enable. |
 | Webhook returns 401 | `?token=` doesn't match `ADR_WEBHOOK_TOKEN`. |
+| Port 8765 times out from outside (curl hangs / connection refused) | **Plesk manages `iptables` directly** — `ufw` being inactive does NOT mean the box is open. Plesk's firewall has a default `DROP` policy; port 8765 is not in its allowlist. Fix: in Plesk panel → **Tools & Settings → Firewall → Add Custom Rule** (TCP, port 8765, source = your orchestrator IP, Allow) then Apply Changes. For a quick test first: `sudo iptables -I INPUT 1 -p tcp --dport 8765 -s YOUR_IP -j ACCEPT` (not persistent). Azure NSG alone is not sufficient — both the NSG and the Plesk/iptables firewall must allow the port. |
 
 ---
 
