@@ -90,4 +90,4 @@ log_paths:
   - /var/log/nginx/
   - /var/log/apache2/
   - /var/log/plesk/
-  - /var/www/vhosts/system/
+  - /var/www/vhosts/

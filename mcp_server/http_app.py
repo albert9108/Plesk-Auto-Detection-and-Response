@@ -13,6 +13,7 @@ import os
 
 from fastapi import Body, FastAPI, Header, HTTPException
 
+from .exec.runner import LogPathNotAllowed
 from .tools import ServerTools
 
 # Tool name -> the ServerTools method invoked with the JSON body as kwargs.
@@ -53,6 +54,8 @@ def create_http_app(tools: ServerTools | None = None, token: str | None = None) 
             result = method(**clean)
         except TypeError as exc:
             raise HTTPException(status_code=400, detail=f"bad params for {name}: {exc}")
+        except LogPathNotAllowed as exc:
+            raise HTTPException(status_code=400, detail=f"log path not allowed: {exc}")
         return {"result": result}
 
     return app

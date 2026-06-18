@@ -52,7 +52,8 @@ class ServerTools:
         return banned_in
 
     def plesk_domain_info(self, domain: str) -> str:
-        return self.runner.run("plesk_domain_info", domain=domain).stdout
+        res = self.runner.run("plesk_domain_info", domain=domain)
+        return res.stdout or res.stderr
 
     def read_log(self, path: str, lines: int = 200, grep: str | None = None) -> str:
         return self.runner.read_log(path, lines=lines, grep=grep)
