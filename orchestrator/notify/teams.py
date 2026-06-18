@@ -15,9 +15,10 @@ import httpx
 class TeamsNotifier:
     name = "teams"
 
-    def __init__(self, webhook_url: str, public_url: str | None = None):
+    def __init__(self, webhook_url: str, public_url: str | None = None, token: str = ""):
         self.webhook_url = webhook_url
         self.public_url = (public_url or os.environ.get("ADR_PUBLIC_URL", "")).rstrip("/")
+        self.token = token
 
     async def _send(self, card: dict) -> None:
         async with httpx.AsyncClient(timeout=10) as c:
@@ -31,6 +32,8 @@ class TeamsNotifier:
 
     async def request_approval(self, incident_id: str, summary: str) -> None:
         target = f"{self.public_url}/webhook/chat"
+        if self.token:
+            target += f"?token={self.token}"
         actions = []
         for label, decision in (("✅ Approve", "approve"), ("❌ Deny", "deny")):
             actions.append({

@@ -12,7 +12,7 @@ from ..notify.base import ApprovalRegistry
 
 
 class ChatRouter:
-    def __init__(self, approvals: ApprovalRegistry, client: ToolClient):
+    def __init__(self, approvals: ApprovalRegistry, client: ToolClient | None):
         self.approvals = approvals
         self.client = client
 
@@ -30,6 +30,12 @@ class ChatRouter:
     def answer(self, text: str) -> str:
         """Minimal conversational command handler for the team chatbot."""
         t = text.strip().lower()
+        if self.client is None:
+            return (
+                "No default server is configured for direct queries. In multi-server "
+                "mode, set `default: true` on one server in servers.yaml to enable "
+                "`status`/`fail2ban` commands."
+            )
         if t in ("status", "/status", "health"):
             h = self.client.system_health()
             return f"Load: {h['load']}\n\nDisk:\n{h['disk']}\n\nMemory:\n{h['memory']}"

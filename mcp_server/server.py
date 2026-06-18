@@ -79,6 +79,17 @@ def build_server(tools: ServerTools | None = None):
 
 def main() -> None:
     transport = os.environ.get("ADR_MCP_TRANSPORT", "stdio")
+    if transport == "http":
+        # Authenticated HTTP facade for an off-box orchestrator (see http_app.py).
+        import uvicorn
+
+        from .http_app import create_http_app
+
+        host = os.environ.get("ADR_MCP_HTTP_HOST", "0.0.0.0")
+        port = int(os.environ.get("ADR_MCP_HTTP_PORT", "8765"))
+        uvicorn.run(create_http_app(build_tools()), host=host, port=port)
+        return
+    # stdio (or any FastMCP-native transport) → real MCP protocol for Claude/Inspector.
     server = build_server()
     server.run(transport=transport)
 
