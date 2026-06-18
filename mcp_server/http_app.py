@@ -17,8 +17,9 @@ from .tools import ServerTools
 
 # Tool name -> the ServerTools method invoked with the JSON body as kwargs.
 ALLOWED_TOOLS = {
-    "system_health", "service_status", "fail2ban_status", "find_ip_in_jails",
-    "plesk_domain_info", "read_log", "unban_ip", "ban_ip", "restart_service",
+    "system_health", "top_processes", "service_status", "fail2ban_status",
+    "find_ip_in_jails", "plesk_domain_info", "read_log", "unban_ip", "ban_ip",
+    "restart_service",
 }
 
 
