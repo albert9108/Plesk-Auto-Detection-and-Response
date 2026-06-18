@@ -62,7 +62,7 @@ commands:
 
   # ---- read-only: plesk ----
   plesk_domain_info:
-    argv: ["plesk", "bin", "domain", "--info", "{domain}"]
+    argv: ["/usr/sbin/plesk", "bin", "domain", "--info", "{domain}"]
     sudo: true
     tier: read
 
