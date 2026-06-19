@@ -7,6 +7,9 @@ Security model (defense in depth):
   4. Log reads are restricted to allowlisted path prefixes (no traversal).
   5. `sudo` commands additionally require a matching deploy/sudoers.d rule at the
      OS level, which is an independent backstop outside this process.
+  6. Child processes run with a minimal clean environment so that service-level
+     env vars (tokens, transport settings) are never leaked to subprocesses, and
+     ambient env cannot affect command behaviour (e.g. Plesk root-UID checks).
 """
 
 from __future__ import annotations
@@ -20,6 +23,16 @@ from pathlib import Path
 import yaml
 
 DEFAULT_ALLOWLIST = Path(__file__).resolve().parent.parent / "allowlist.yaml"
+
+# Minimal environment passed to every child process.  Keeps the shell PATH that
+# sudo and system tools expect; deliberately excludes service-specific variables
+# (ADR_MCP_TOKEN, ADR_MCP_TRANSPORT, VIRTUAL_ENV, …) so they are never leaked.
+_CHILD_ENV = {
+    "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "HOME": "/root",
+    "USER": "root",
+    "LANG": "C.UTF-8",
+}
 
 
 class CommandNotAllowed(Exception):
@@ -124,6 +137,7 @@ class CommandRunner:
 
     def _spawn(self, argv: list[str]) -> tuple[int, str, str]:
         proc = subprocess.run(
-            argv, capture_output=True, text=True, timeout=self.timeout, check=False
+            argv, capture_output=True, text=True, timeout=self.timeout, check=False,
+            env=_CHILD_ENV,
         )
         return proc.returncode, proc.stdout, proc.stderr
